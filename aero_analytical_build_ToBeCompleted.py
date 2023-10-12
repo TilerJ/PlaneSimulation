@@ -17,7 +17,7 @@ import aero_table
 # Initial guesses for the fitting
 # i.e., initial values of a and b
 CL_0 = 0.0410
-CL_alpha = 0.10
+CL_alpha = 0.1
 
 # Functional form to fit to data
 def CL_a_func(x, a, b):
@@ -70,14 +70,32 @@ CM_alpha = -0.01
 
 # TO BE COMPLETED HERE
 #--------------------------------------
+def CM_a_func(x, a, b):
+    return a + b * x
 
+# Fitting (find a and b of the above function)  
+# using the python module optimize from scipy.
+# params contains the fitted values of a and b
+# params_covariance contains a measure of the achieved 
+# accuracy 
+params, params_covariance = optimize.curve_fit(CM_a_func, aero_table.alpha, aero_table.CM,
+        p0=[CM_0, CM_alpha])
+
+CM_0 = params[0]
+CM_alpha = params[1]
 #--------------------------------------
 #Moment vs delta_elevator
 CM_delta = -0.004
 
 # TO BE COMPLETED HERE
 #--------------------------------------
+def CM_d_func(x, a):
+    return a * x
 
+params, params_covariance = optimize.curve_fit(CM_d_func, aero_table.delta_el, aero_table.CM_el,
+        p0=[CM_delta])
+
+CM_delta = params[0]
 #--------------------------------------
 # Write results on screen (check)
 print(CL_0, CL_alpha, CL_delta)
