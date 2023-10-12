@@ -17,7 +17,7 @@ import aero_table
 # Initial guesses for the fitting
 # i.e., initial values of a and b
 CL_0 = 0.0410
-CL_alpha = 0.1
+CL_alpha = 0.10
 
 # Functional form to fit to data
 def CL_a_func(x, a, b):
