@@ -136,11 +136,44 @@ def alpha_calc_func(alpha, velocity,flight_path_angle):
 
     return (-L * math.cos(alpha) - D * math.sin(alpha) + (vehicle.acMass * env.gravity) * math.cos(alpha + flight_path_angle))
 
+def store_variables_func(alpha):
+    alpha_deg = alpha *180/math.pi
+    vehicle.CL = CL_func(alpha_deg)
+    vehicle.CD = CD_func(vehicle.CL)
+
+    vehicle.L = 0.5 * env.air_density * (velocity**2) * vehicle.Sref * vehicle.CL
+    vehicle.D = 0.5 * env.air_density * (velocity**2) * vehicle.Sref * vehicle.CD
+
 velocity = 100
 flight_path_angle = 0.05 #rad
 # this trails all a ton of values into alpha_calc_func until it returns zero
-alpha = optimize.root(alpha_calc_func,x0 = 0.0164, args=(velocity,flight_path_angle))
-print(alpha.x[0])
-print(alpha_calc_func([0.0],100,0.05))
-#print(alpha_calc_func(0.0164,velocity,flight_path_angle))
+alpha = optimize.root(alpha_calc_func,x0 = 0, args=(velocity,flight_path_angle))
+alpha = alpha.x[0]
+delta = delta_func(alpha*180/math.pi)*math.pi/180
+
+print((vehicle.acMass * env.gravity))
+
+def thrust_func(alpha,flight_path_angle):
+    alpha_deg = alpha *180/math.pi
+    CL = CL_func(alpha_deg)
+    CD = CD_func(CL)
+    S = vehicle.Sref
+    rho = env.air_density
+
+    L = 0.5 * rho * (velocity**2) * S * CL
+    D = 0.5 * rho * (velocity**2) * S * CD
     
+    return (vehicle.acMass * env.gravity) * math.sin(alpha + flight_path_angle) + D * math.cos(alpha) - L * math.sin(alpha)
+
+
+
+theta = alpha + delta
+u_b = velocity*math.cos(alpha)
+w_b = velocity*math.sin(alpha)
+
+print(f"Alpha: {alpha}")
+print(f"Delta: {delta}")
+print(f"Thrust: {thrust_func(alpha,flight_path_angle)}")
+print(f"Theta: {theta}")
+print(f"u_b: {u_b}")
+print(f"w_b: {w_b}")
