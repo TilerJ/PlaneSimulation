@@ -2,6 +2,7 @@
 import numpy as np
 import math
 from scipy import optimize
+import matplotlib.pyplot as plt
 
 #--------------------------------------
 # importing module with aerodynamics model 
@@ -17,7 +18,7 @@ import aero_table
 # Initial guesses for the fitting
 # i.e., initial values of a and b
 CL_0 = 0.0410
-CL_alpha = 0.10
+CL_alpha = 0.1
 
 # Functional form to fit to data
 def CL_a_func(x, a, b):
@@ -28,8 +29,7 @@ def CL_a_func(x, a, b):
 # params contains the fitted values of a and b
 # params_covariance contains a measure of the achieved 
 # accuracy 
-params, params_covariance = optimize.curve_fit(CL_a_func, aero_table.alpha, aero_table.CL,
-        p0=[CL_0, CL_alpha])
+params, params_covariance = optimize.curve_fit(CL_a_func, aero_table.alpha, aero_table.CL, p0=[CL_0, CL_alpha])
 
 CL_0 = params[0]
 CL_alpha = params[1]
@@ -42,12 +42,10 @@ CL_delta = 0.003
 def CL_d_func(x, a):
     return a * x
 
-params, params_covariance = optimize.curve_fit(CL_d_func, aero_table.delta_el, aero_table.CL_el,
-        p0=[CL_delta])
+params, params_covariance = optimize.curve_fit(CL_d_func, aero_table.delta_el, aero_table.CL_el, p0=[CL_delta])
 
 CL_delta = params[0]
 #--------------------------------------
-
 #--------------------------------------
 # CD vs CL
 CD_0 = 0.026
@@ -56,8 +54,7 @@ CD_k = 0.045
 def CD_CL_func(x, a, b):
     return a + b * x**2.0
 
-params, params_covariance = optimize.curve_fit(CD_CL_func, aero_table.CL, aero_table.CD,
-        p0=[CD_0, CD_k])
+params, params_covariance = optimize.curve_fit(CD_CL_func, aero_table.CL, aero_table.CD, p0=[CD_0, CD_k])
 
 CD_0 = params[0]
 CD_k = params[1]
@@ -71,12 +68,28 @@ CM_alpha = -0.01
 # TO BE COMPLETED HERE
 #--------------------------------------
 
+# Functional form to fit to data
+def CM_a_func(x, a, b):
+    return a + b * x
+
+params, params_covariance = optimize.curve_fit(CM_a_func, aero_table.alpha, aero_table.CM, p0=[CM_0, CM_alpha])
+
+CM_0 = params[0]
+CM_alpha = params[1]
+
 #--------------------------------------
 #Moment vs delta_elevator
 CM_delta = -0.004
 
 # TO BE COMPLETED HERE
 #--------------------------------------
+def CM_d_func(x, a):
+    return a * x
+
+
+params, params_covariance = optimize.curve_fit(CM_d_func, aero_table.delta_el, aero_table.CM_el, p0=[CM_delta])
+
+CM_delta = params[0]
 
 #--------------------------------------
 # Write results on screen (check)
@@ -85,4 +98,93 @@ print(CD_0,CD_k)
 print(CM_0, CM_alpha, CM_delta)
 #--------------------------------------
 
+x = np.arange(-15,15,0.1)
+y = CM_a_func(x,CM_0,CM_alpha)
+fig = plt.figure()
+ax1 = fig.add_subplot(111)
+plt.grid(True)
+plt.xlabel("alpha")
+plt.ylabel("C_M_Wing")
 
+ax1.scatter(aero_table.alpha, aero_table.CM, s=10, c='b', marker="s", label='first')
+ax1.scatter(x,y, s=10, c='r', marker="o", label='second')
+
+# plt.show()
+import env 
+import vehicle 
+
+def delta_func(alpha):
+    #alpha needs to be in Degrees
+    return (-(CM_0 + (CM_alpha * alpha))/CM_delta)
+
+def CL_func(alpha):
+    delta = delta_func(alpha)
+    return CL_0 + (CL_alpha * alpha) + (CL_delta * delta)
+
+
+def CD_func(CL):
+    return CD_0 + CD_k*(CL**2)
+
+def alpha_calc_func(alpha, velocity,flight_path_angle):
+
+    alpha = alpha[0] # gets rid of depreciatcion of numpy
+    alpha_deg = alpha *180/math.pi
+    CL = CL_func(alpha_deg)
+    CD = CD_func(CL)
+    S = vehicle.Sref
+    rho = env.air_density
+
+    L = 0.5 * rho * (velocity**2) * S * CL
+    D = 0.5 * rho * (velocity**2) * S * CD
+
+    return (-L * math.cos(alpha) - D * math.sin(alpha) + (vehicle.acMass * env.gravity) * math.cos(alpha + flight_path_angle))
+
+def store_variables_func(alpha):
+    alpha_deg = alpha *180/math.pi
+    vehicle.CL = CL_func(alpha_deg)
+    vehicle.CD = CD_func(vehicle.CL)
+
+    vehicle.L = 0.5 * env.air_density * (velocity**2) * vehicle.Sref * vehicle.CL
+    vehicle.D = 0.5 * env.air_density * (velocity**2) * vehicle.Sref * vehicle.CD
+
+velocity = 100
+flight_path_angle = 0.05 #rad
+# this trails all a ton of values into alpha_calc_func until it returns zero
+alpha = optimize.root(alpha_calc_func,x0 = 0, args=(velocity,flight_path_angle))
+alpha = alpha.x[0]
+delta = delta_func(alpha*180/math.pi)*math.pi/180
+
+print((vehicle.acMass * env.gravity))
+
+def thrust_func(alpha,flight_path_angle):
+    alpha_deg = alpha *180/math.pi
+    CL = CL_func(alpha_deg)
+    CD = CD_func(CL)
+    S = vehicle.Sref
+    rho = env.air_density
+
+    L = 0.5 * rho * (velocity**2) * S * CL
+    D = 0.5 * rho * (velocity**2) * S * CD
+    
+    return (vehicle.acMass * env.gravity) * math.sin(alpha + flight_path_angle) + D * math.cos(alpha) - L * math.sin(alpha)
+
+
+
+theta = alpha + delta
+u_b = velocity*math.cos(alpha)
+w_b = velocity*math.sin(alpha)
+
+print(f"Alpha: {alpha}")
+print(f"Delta: {delta}")
+print(f"Thrust: {thrust_func(alpha,flight_path_angle)}")
+print(f"Theta: {theta}")
+print(f"u_b: {u_b}")
+print(f"w_b: {w_b}")
+
+def plot(y_axis,y_label,plot_title):
+    plt.plot(time_list,y_axis, color = 'black')
+    plt.title(plot_title)
+    plt.xlabel('time (s)')
+    plt.ylabel(y_label)
+    plt.grid(True)
+    plt.grid(linestyle = '-')
