@@ -98,82 +98,49 @@ print(CD_0,CD_k)
 print(CM_0, CM_alpha, CM_delta)
 #--------------------------------------
 
-x = np.arange(-15,15,0.1)
-y = CM_a_func(x,CM_0,CM_alpha)
-fig = plt.figure()
-ax1 = fig.add_subplot(111)
-
-ax1.scatter(aero_table.alpha, aero_table.CM, s=10, c='b', marker="s", label='first')
-ax1.scatter(x,y, s=10, c='r', marker="o", label='second')
 
 # plt.show()
 import env 
 import vehicle 
 
-def delta_func(alpha):
-    #alpha needs to be in Degrees
-    return (-(CM_0 + (CM_alpha * alpha))/CM_delta)
 
-def CL_func(alpha):
-    delta = delta_func(alpha)
-    return CL_0 + (CL_alpha * alpha) + (CL_delta * delta)
+class Trim_Simulation:
+    def __init__(self,velocity,flight_path_angle):
+        self.Velocity = velocity
+        self.flight_path_angle = flight_path_angle
+        self.W = (vehicle.acMass * env.gravity)
+        self.S = vehicle.Sref
+        self.rho = env.air_density
 
+        alpha = optimize.root(self.alpha_calc_func,x0 = 0, args=())
+        self.alpha = alpha.x[0]
 
-def CD_func(CL):
-    return CD_0 + CD_k*(CL**2)
+        self.T = self.W * math.sin(self.alpha + flight_path_angle) + self.D * math.cos(self.alpha) - self.L * math.sin(self.alpha)
 
-def alpha_calc_func(alpha, velocity,flight_path_angle):
+        self.theta = self.alpha + self.delta
+        self.u_b = velocity*math.cos(self.alpha)
+        self.w_b = velocity*math.sin(self.alpha)  
 
-    alpha = alpha[0] # gets rid of depreciatcion of numpy
-    alpha_deg = alpha *180/math.pi
-    CL = CL_func(alpha_deg)
-    CD = CD_func(CL)
-    S = vehicle.Sref
-    rho = env.air_density
+    def alpha_calc_func(self,alpha):
+        alpha = alpha[0] # gets rid of depreciatcion of numpy
 
-    L = 0.5 * rho * (velocity**2) * S * CL
-    D = 0.5 * rho * (velocity**2) * S * CD
+        alpha_deg = alpha *180/math.pi
+        delta_deg = -(CM_0 + (CM_alpha * alpha_deg))/CM_delta
+        self.delta = delta_deg * math.pi/180
 
-    return (-L * math.cos(alpha) - D * math.sin(alpha) + (vehicle.acMass * env.gravity) * math.cos(alpha + flight_path_angle))
+        self.CL = CL_0 + (CL_alpha * alpha_deg) + (CL_delta * delta_deg)
+        self.CD = CD_0 + CD_k*(self.CL**2)
+        
 
-def store_variables_func(alpha):
-    alpha_deg = alpha *180/math.pi
-    vehicle.CL = CL_func(alpha_deg)
-    vehicle.CD = CD_func(vehicle.CL)
+        self.L = 0.5 * self.rho * (self.Velocity**2) * self.S * self.CL
+        self.D = 0.5 * self.rho * (self.Velocity**2) * self.S * self.CD
 
-    vehicle.L = 0.5 * env.air_density * (velocity**2) * vehicle.Sref * vehicle.CL
-    vehicle.D = 0.5 * env.air_density * (velocity**2) * vehicle.Sref * vehicle.CD
+        return (-self.L * math.cos(alpha) - self.D * math.sin(alpha) + self.W * math.cos(alpha + self.flight_path_angle))
 
-velocity = 100
-flight_path_angle = 0.05 #rad
-# this trails all a ton of values into alpha_calc_func until it returns zero
-alpha = optimize.root(alpha_calc_func,x0 = 0, args=(velocity,flight_path_angle))
-alpha = alpha.x[0]
-delta = delta_func(alpha*180/math.pi)*math.pi/180
-
-print((vehicle.acMass * env.gravity))
-
-def thrust_func(alpha,flight_path_angle):
-    alpha_deg = alpha *180/math.pi
-    CL = CL_func(alpha_deg)
-    CD = CD_func(CL)
-    S = vehicle.Sref
-    rho = env.air_density
-
-    L = 0.5 * rho * (velocity**2) * S * CL
-    D = 0.5 * rho * (velocity**2) * S * CD
-    
-    return (vehicle.acMass * env.gravity) * math.sin(alpha + flight_path_angle) + D * math.cos(alpha) - L * math.sin(alpha)
-
-
-
-theta = alpha + delta
-u_b = velocity*math.cos(alpha)
-w_b = velocity*math.sin(alpha)
-
-print(f"Alpha: {alpha}")
-print(f"Delta: {delta}")
-print(f"Thrust: {thrust_func(alpha,flight_path_angle)}")
-print(f"Theta: {theta}")
-print(f"u_b: {u_b}")
-print(f"w_b: {w_b}")
+sim = Trim_Simulation(100,0.05)
+print(f"Alpha: {sim.alpha}")
+print(f"Delta: {sim.delta}")
+print(f"Thrust: {sim.T}")
+print(f"Theta: {sim.theta}")
+print(f"u_b: {sim.u_b}")
+print(f"w_b: {sim.w_b}")
