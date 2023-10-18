@@ -107,41 +107,94 @@ ax1.scatter(aero_table.alpha, aero_table.CM, s=10, c='b', marker="s", label='fir
 ax1.scatter(x,y, s=10, c='r', marker="o", label='second')
 
 # plt.show()
-import env 
-import vehicle 
+import math
+from scipy.optimize import newton
+
+class Vehicle:
+    Sref = 20  # Sample reference area
+
+class Environment:
+    air_density = 1.0065  # Sample air density
+    gravity = 9.81
+
+vehicle = Vehicle()
+env = Environment()
 
 def delta_func(alpha):
-    #alpha needs to be in Degrees
-    return (-(CM_0 + (CM_alpha * alpha))/CM_delta)
+    alpha_deg = alpha * 180/math.pi
+    return (-(CM_0 + (CM_alpha * alpha_deg)) / CM_delta)
 
 def CL_func(alpha):
     alpha_deg = alpha * 180/math.pi
     delta = delta_func(alpha)
-    return CL_0 + (CL_alpha * alpha_deg) + (CL_delta * delta)
-
+    return CL_0 + CL_alpha * alpha_deg + CL_delta * delta
 
 def CD_func(CL):
-    return CD_0 + CD_k*(CL**2)
+    return CD_0 + CD_k * (CL ** 2)
 
-def alpha_calc_func(alpha, velocity,flight_path_angle):
+def CM_func(alpha):
+    alpha_deg = alpha * 180/math.pi
+    delta = delta_func(alpha)
+    return CM_0 + CM_alpha * alpha_deg + CM_delta * delta
 
-    alpha = alpha[0] # gets rid of depreciatcion of numpy
-    alpha_deg = alpha *180/math.pi
-    CL = CL_func(alpha_deg)
+def alpha_calc_func(alpha, velocity, flight_path_angle):
+    CL = CL_func(alpha)
     CD = CD_func(CL)
     S = vehicle.Sref
     rho = env.air_density
+    L = 0.5 * rho * (velocity ** 2) * S * CL
+    D = 0.5 * rho * (velocity ** 2) * S * CD
 
-    L = 0.5 * rho * (velocity**2) * S * CL
-    D = 0.5 * rho * (velocity**2) * S * CD
+    return -L * math.cos(alpha) - D * math.sin(alpha) + (1300 * env.gravity) * math.cos(alpha + flight_path_angle)
 
-    return (-L * math.cos(alpha) - D * math.sin(alpha) + (vehicle.acMass * env.gravity) * math.cos(alpha + flight_path_angle))
 
 velocity = 100
-flight_path_angle = 0.05 #rad
-# this trails all a ton of values into alpha_calc_func until it returns zero
-alpha = optimize.root(alpha_calc_func,x0 = 0.0164, args=(velocity,flight_path_angle))
-print(alpha.x[0])
-print(alpha_calc_func([0.0],100,0.05))
-#print(alpha_calc_func(0.0164,velocity,flight_path_angle))
+flight_path_angle = 0.05 # rad
+target_alpha = 0.0164  # The desired value
+
+# Define a custom function for root-finding
+def alpha_Calc(alpha):
+    return alpha_calc_func(alpha, velocity, flight_path_angle)  - target_alpha
+
+def thrust_calc_func (alpha, flight_path_angle):
+    CL = CL_func(alpha)
+    CD = CD_func(CL)
+    S = vehicle.Sref
+    rho = env.air_density
+    alpha_deg = alpha * 180/math.pi
+    L = 0.5 * rho * (velocity ** 2) * S * CL
+    D = 0.5 * rho * (velocity ** 2) * S * CD
     
+    return (1300 * env.gravity) * math.sin(alpha + flight_path_angle) + D * math.cos(alpha) - L * math.sin(alpha)
+
+def elev_calc (alpha):
+    CM = CM_func(alpha)
+    S = vehicle.Sref
+    rho = env.air_density
+    alpha_deg = alpha * 180/math.pi
+    
+    return -(CM_0 + CM_alpha * alpha)/CM_delta
+
+
+# Use the newton function to find the value of alpha
+alpha = newton(alpha_Calc, 0.0164)
+print('alpha =', alpha ,'(rad)')
+# Calculate and print the thrust
+
+thrust = thrust_calc_func(alpha, flight_path_angle)
+print('Thrust =', thrust, '(N)')
+
+import math
+
+alpha_value = alpha  
+delta = delta * math.pi / 180  
+print('Delta =', delta_radians, '(rad)')
+
+pitch_angle = flight_path_angle + alpha
+print('pitch angle =',pitch_angle, '(rad)')
+
+u_b = velocity*math.cos(alpha)
+w_b = velocity*math.sin(alpha)
+
+print('u_b =', u_b, '(m/s)')
+print('u_b =', w_b, '(m/s)')
