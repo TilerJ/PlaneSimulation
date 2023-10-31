@@ -106,7 +106,6 @@ print(CM_0, CM_alpha, CM_delta)
 import env 
 import vehicle 
 
-
 class Trim_Simulation:
     def __init__(self,velocity,flight_path_angle):
         self.Velocity = velocity
@@ -147,109 +146,163 @@ print(f"Thrust: {sim.T}")
 print(f"Theta: {sim.theta}")
 print(f"u_b: {sim.u_b}")
 print(f"w_b: {sim.w_b}")
-print((sim.L*math.sin(sim.alpha) - sim.D*math.cos(sim.alpha) - sim.W*math.sin(sim.theta) + sim.T))
-
-class Simulation ():
-    pass
-
-T = sim.T
-PercentageChangeElevator = 10 #percentage
-TimeChangeElevator = 2000 #seconds
-
-PercentageChangeThrust = 0 #percentage
-TimeChangeThrust = 20 #seconds
-
-def model(t,y):
-    if t < 10 or t> 10 + TimeChangeElevator:
-        delta = sim.delta
-    else:
-        delta = sim.delta * (1+ PercentageChangeElevator/100)
-
-    if t < 10 or t> 10 + TimeChangeElevator:
-        T = sim.T
-    else:
-        T = sim.T * (1+ PercentageChangeThrust/100)
-
-    u_b, w_b, theta,q, x_e,z_e = y
 
 
-    alpha = math.atan(w_b/u_b) 
-    V = math.sqrt(u_b**2 + w_b**2)
+class Simulation():
+    
+    def HandleSimulationData(self,Data,h = 0):
+        self.t = Data.t
 
-    W = (vehicle.acMass * env.gravity)
-    S = vehicle.Sref
-    rho = env.air_density
-    cbar = vehicle.cbar
+        self.u_b = Data.y[0]
+        self.w_b = Data.y[1]
+        self.theta = Data.y[2] 
+        self.theta = self.theta * 180/math.pi
+        self.q = Data.y[3]
+        self.x_e = Data.y[4]
+        self.z_e = Data.y[5]
 
-    alpha_deg = alpha *180/math.pi
-    delta_deg = delta * 180/math.pi
+        self.altitude = self.z_e * -1
+        self.altitude += h
 
-    CL = CL_0 + (CL_alpha * alpha_deg) + (CL_delta * delta_deg)
-    CD = CD_0 + CD_k*(CL**2)
-    CM = CM_0 + (CM_alpha * alpha_deg) + (CM_delta * delta_deg)
+        fig,ax = plt.subplots(3,2)
 
-    L = 0.5 * rho * (V**2) * S * CL
-    D = 0.5 * rho * (V**2) * S * CD
-    M = 0.5 * rho * (V**2) * S * CM * cbar
+        ax[0,0].set_ylabel("$u_{B}$",rotation='horizontal')
+        ax[0,0].set_xlabel("t")
+        ax[0,1].set_ylabel("$w_{B}$",rotation='horizontal')
+        ax[0,1].set_xlabel("t")
 
-    dq_dt = (M/vehicle.inertia_yy)
-    dtheta_dt = q
+        ax[1,0].set_ylabel("${\Theta}$",rotation='horizontal')
+        ax[1,0].set_xlabel("t")
+        ax[1,1].set_ylabel("q",rotation='horizontal')
+        ax[1,1].set_xlabel("t")
 
-    du_dt = (L*math.sin(alpha) - D*math.cos(alpha) - vehicle.acMass*q*w_b - W*math.sin(theta) + T)/vehicle.acMass
-    dw_dt = (-L*math.cos(alpha)-D*math.sin(alpha)+vehicle.acMass*q*u_b + W*math.cos(theta))/vehicle.acMass
+        ax[2,0].set_ylabel("$x_{e}$",rotation='horizontal')
+        ax[2,0].set_xlabel("t")
 
-    dx_dt = u_b*math.cos(theta) + w_b*math.sin(theta)
-    dz_dt = - u_b*math.sin(theta) + w_b*math.cos(theta)
+        #ze is negative of the altitude
+        # ax[2,1].set_ylabel("$z_{e}$",rotation='horizontal')
+        # ax[2,1].set_xlabel("t")
 
-    return du_dt,dw_dt,dtheta_dt,dq_dt,dx_dt,dz_dt
+        ax[2,1].set_ylabel("Altitude h")
+        ax[2,1].set_xlabel("t")
+
+
+        ax[0,0].plot(self.t,self.u_b)
+        ax[0,1].plot(self.t,self.w_b)
+        ax[1,0].plot(self.t,self.theta)
+        ax[1,1].plot(self.t,self.q)
+        ax[2,0].plot(self.t,self.x_e)
+        # ax[2,1].plot(t,z_e)
+        ax[2,1].plot(self.t,self.altitude)
+
+        plt.show()
+
+    def Calculations(self,t,y,delta,T):
+
+        u_b, w_b, theta,q, x_e,z_e = y
+
+        alpha = math.atan(w_b/u_b) 
+        V = math.sqrt(u_b**2 + w_b**2)
+
+        W = (vehicle.acMass * env.gravity)
+        S = vehicle.Sref
+        rho = env.air_density
+        cbar = vehicle.cbar
+
+        alpha_deg = alpha *180/math.pi
+        delta_deg = delta * 180/math.pi
+
+        CL = CL_0 + (CL_alpha * alpha_deg) + (CL_delta * delta_deg)
+        CD = CD_0 + CD_k*(CL**2)
+        CM = CM_0 + (CM_alpha * alpha_deg) + (CM_delta * delta_deg)
+
+        L = 0.5 * rho * (V**2) * S * CL
+        D = 0.5 * rho * (V**2) * S * CD
+        M = 0.5 * rho * (V**2) * S * CM * cbar
+
+        dq_dt = (M/vehicle.inertia_yy)
+        dtheta_dt = q
+
+        du_dt = (L*math.sin(alpha) - D*math.cos(alpha) - vehicle.acMass*q*w_b - W*math.sin(theta) + T)/vehicle.acMass
+        dw_dt = (-L*math.cos(alpha)-D*math.sin(alpha)+vehicle.acMass*q*u_b + W*math.cos(theta))/vehicle.acMass
+
+        dx_dt = u_b*math.cos(theta) + w_b*math.sin(theta)
+        dz_dt = - u_b*math.sin(theta) + w_b*math.cos(theta)
+
+        return du_dt,dw_dt,dtheta_dt,dq_dt,dx_dt,dz_dt
+
 
 x_e0 = 0
 z_e0 = 0
-y = integrate.solve_ivp(model,[0,300],[sim.u_b,sim.w_b,sim.theta,0,x_e0,z_e0],t_eval=np.linspace(0,300,3000))
-
-t = y.t
-
-u_b = y.y[0]
-w_b = y.y[1]
-theta = y.y[2] 
-print(theta)
-theta = theta * 180/math.pi
-print(theta)
-q = y.y[3]
-x_e = y.y[4]
-z_e = y.y[5]
-z_e += 2000
 
 
-fig,ax = plt.subplots(3,2)
 
-ax[0,0].set_ylabel("$u_{B}$",rotation='horizontal')
-ax[0,0].set_xlabel("t")
-ax[0,1].set_ylabel("$w_{B}$",rotation='horizontal')
-ax[0,1].set_xlabel("t")
+## For B2
+class InclineSimulation (Simulation):
+    def __init__(self,TrimV,TrimGamma,TotalSimulationTime,Initial_T_Climb,Precision):
 
-ax[1,0].set_ylabel("${\Theta}$",rotation='horizontal')
-ax[1,0].set_xlabel("t")
-ax[1,1].set_ylabel("q",rotation='horizontal')
-ax[1,1].set_xlabel("t")
+        Trim = Trim_Simulation(TrimV,TrimGamma)
+        self.Trim = Trim
+        
+        gamma2 = TrimGamma + 2*math.pi/180
+        self.Trim2 = Trim_Simulation(TrimV,gamma2)
+        
+        self.T_climb = Initial_T_Climb
+        final_h = 0
 
-ax[2,0].set_ylabel("$x_{e}$",rotation='horizontal')
-ax[2,0].set_xlabel("t")
-ax[2,1].set_ylabel("$z_{e}$",rotation='horizontal')
-ax[2,1].set_xlabel("t")
+        #Keeps trying until the final value of h is the traget value +-1
+        while final_h < 1999:
+            self.T_climb += Precision
+            y = integrate.solve_ivp(self.Model,[0,TotalSimulationTime],[Trim.u_b,Trim.w_b,Trim.theta,0,x_e0,z_e0],t_eval=np.linspace(0,TotalSimulationTime,TotalSimulationTime*10))
+            final_h = y.y[5][len(y.y[5]) - 1] * -1 +1000
+        
+        print(f"Optimimum T_Climb: {self.T_climb}")
+        print(f"Final Height: {final_h}")
+        self.HandleSimulationData(y,1000)
+    
 
+    def Model(self,t,y):
+        if t > 10 and t < 10 + self.T_climb:
+            delta = self.Trim2.delta
+        else:
+            delta = self.Trim.delta
+        
+        if t > 10 and t < 10 + self.T_climb:
+            Thrust = self.Trim2.T
+        else:
+            Thrust = self.Trim.T
 
-ax[0,0].plot(t,u_b)
-ax[0,1].plot(t,w_b)
-ax[1,0].plot(t,theta)
-ax[1,1].plot(t,q)
-ax[2,0].plot(t,x_e)
-ax[2,1].plot(t,z_e)
+        return self.Calculations(t,y,delta,Thrust)
 
-# plt.plot(y.t,y.y[0,:] , 'b.-',y.t,y.y[1,:] , 'r-')
-# plt.xlabel('x')
-# plt.ylabel('y_1(x), y_2(x)')
-plt.show()
+InclineSimulation(119,0,1000,230,0.1)
+
+## For user Interface 
+class CustomSimulation (Simulation):
+    def __init__(self,TrimV,TrimGamma,TotalSimulationTime,PercentageChangeElevator = 0,TimeChangeElevator = 0,PercentageChangeThrust = 0,TimeChangeThrust=0):
+        Trim = Trim_Simulation(TrimV,TrimGamma)
+        self.Trim = Trim
+        self.PercentageChangeElevator = PercentageChangeElevator
+        self.TimeChangeElevator = TimeChangeElevator
+        self.PercentageChangeThrust = PercentageChangeThrust
+        self.TimeChangeThrust = TimeChangeThrust
+
+        y = integrate.solve_ivp(self.Model,[0,TotalSimulationTime],[Trim.u_b,Trim.w_b,Trim.theta,0,x_e0,z_e0],t_eval=np.linspace(0,TotalSimulationTime,TotalSimulationTime*10))
+        self.HandleSimulationData(y)
+       
+    
+
+    def Model(self,t,y):
+        if t > self.TimeChangeElevator:
+            delta = self.Trim.delta * (100+ self.PercentageChangeElevator)/100
+        else:
+            delta = self.Trim.delta
+        
+        if t > self.TimeChangeThrust:
+            Thrust = self.Trim.T * (100 + self.PercentageChangeThrust)/100
+        else:
+            Thrust = self.Trim.T
+
+        return self.Calculations(t,y,delta,Thrust)
 
 
 #--------------------------------------
@@ -291,8 +344,5 @@ for j in np.linspace(0,1000):
 
 #--------------------------------------
 
-##B2
-TrimCondition1 = Trim_Simulation(119,0.0)
-TrimCondition2 = Trim_Simulation(119,2*math.pi/180)
-TrimCondition3 = Trim_Simulation(119,0.0)
+
 
