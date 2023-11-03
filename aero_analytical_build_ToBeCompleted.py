@@ -350,25 +350,25 @@ plt.title('CM vs. Alpha')
 plt.tight_layout()
 plt.show()
 
-
-#Differential Equations
-
+# A3 Differential Equations
 import math
 import numpy as np
 from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
 
-# Your existing code here
 
-# Set initial values for delta, T, and other parameters
 delta = -0.0520  # Initial elevator angle
-T = thrust  # Initial thrust value
-TimeChangeElevator = 100  # Time when elevator angle changes
-PercentageChangeElevator = 10  # Percentage change in elevator angle
+T = 2755.15413277993
+TimeChangeElevator = 2000  # Time when elevator angle changes
+PercentageChangeElevator = 20  # Percentage change in elevator angle
 PercentageChangeThrust = 0  # Percentage change in thrust (set to 0 for no change)
 
-# Modify the model function to include delta and thrust changes
-def model(t, y):
+
+def model(t, y, delta, T):
+    if t < 10 or t> 10 + TimeChangeElevator:
+        delta = -0.0624
+    else:
+        delta = delta * (1+ PercentageChangeElevator/100)
     if t < 10 or t > 10 + TimeChangeElevator:
         T = thrust
     else:
@@ -413,7 +413,7 @@ x_e0 = 0.0
 z_e0 = 0.0
 
 # Solve the system of differential equations
-y = solve_ivp(model, [0, 300], [u_b0, w_b0, theta0, q0, x_e0, z_e0], t_eval=np.linspace(0, 300, 3000))
+y = solve_ivp(model, [0, 300], [u_b0, w_b0, theta0, q0, x_e0, z_e0], t_eval=np.linspace(0, 300, 3000), args=(delta, T))
 
 t = y.t
 u_b = y.y[0]
@@ -424,7 +424,7 @@ x_e = y.y[4]
 z_e = y.y[5]
 z_e += 2000
 
-# Plot all the differential equation variables over time
+
 plt.figure(figsize=(12, 8))
 
 plt.subplot(2, 3, 1)
@@ -440,9 +440,10 @@ plt.ylabel('w_b')
 plt.grid(True)
 
 plt.subplot(2, 3, 3)
-plt.plot(t, theta)
+
+plt.plot(t, [math.degrees(angle) for angle in theta])
 plt.xlabel('Time')
-plt.ylabel('theta')
+plt.ylabel('theta (degrees)')
 plt.grid(True)
 
 plt.subplot(2, 3, 4)
