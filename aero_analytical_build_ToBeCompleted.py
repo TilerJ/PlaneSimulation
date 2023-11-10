@@ -9,7 +9,7 @@ Created on Fri Nov 10 19:57:55 2023
 import numpy as np
 import math
 from scipy import optimize,integrate
-
+import pandas as pd 
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 
@@ -102,10 +102,23 @@ params, params_covariance = optimize.curve_fit(CM_d_func, aero_table.delta_el, a
 CM_delta = params[0]
 
 #--------------------------------------
-# Write results on screen (check)
-print(CL_0, CL_alpha, CL_delta)
-print(CD_0,CD_k)
-print(CM_0, CM_alpha, CM_delta)
+# print coefficients into a pandas dataframe
+data = {
+    'Coefficient': ['CL_0', 'C_L_alpha', 'C_L_Delta', 'C_D_0', 'C_D_k', 'C_M_0', 'C_M_alpha', 'C_M_Delta'],
+    'Value': [CL_0, CL_alpha, CL_delta, CD_0, CD_k, CM_0, CM_alpha, CM_delta]
+}
+
+df = pd.DataFrame(data)
+df_title = pd.DataFrame({'Coefficient': [''], 'Value': ['']})
+df = pd.concat([df_title, df], ignore_index=True)
+
+print(df.to_markdown(index=False, tablefmt='grid'))
+
+fig, ax = plt.subplots()
+ax.text(0.5, 0.5, df.to_string(index=False),
+        ha='center', va='center', fontsize=14, transform=ax.transAxes)
+ax.axis('off')
+plt.show()
 #--------------------------------------
 
 
@@ -147,12 +160,12 @@ class Trim_Simulation:
         return (-self.L * math.cos(alpha) - self.D * math.sin(alpha) + self.W * math.cos(alpha + self.flight_path_angle))
 
 sim = Trim_Simulation(100,0)
-print(f"Alpha: {sim.alpha}")
-print(f"Delta: {sim.delta}")
-print(f"Thrust: {sim.T}")
-print(f"Theta: {sim.theta}")
-print(f"u_b: {sim.u_b}")
-print(f"w_b: {sim.w_b}")
+print(f"Alpha = {sim.alpha}")
+print(f"Delta = {sim.delta}")
+print(f"Thrust = {sim.T}")
+print(f"Theta = {sim.theta}")
+print(f"u_b = {sim.u_b}")
+print(f"w_b = {sim.w_b}")
 
 
 class Simulation():
@@ -171,43 +184,30 @@ class Simulation():
         self.altitude = self.z_e * -1
         self.altitude += h
 
+
         fig, ax = plt.subplots(3, 2, figsize=(16, 16))
-        
-        # Time label
-        t_label = 'time, t [s]'
-        
-        ax[0, 0].set_ylabel("velocity, $u_{B}$ [m$\mathregular{s^{-1}}$]")
-        ax[0, 0].set_xlabel(t_label)
-        ax[0, 1].set_ylabel("velocity, $w_{B}$ [m$\mathregular{s^{-1}}$]")
-        ax[0, 1].set_xlabel(t_label)
-        
-        ax[1, 0].set_ylabel("pitch angle, ${\Theta}$ [°]")
-        ax[1, 0].set_xlabel(t_label)
-        ax[1, 1].set_ylabel("angular velocity, q [rad$\mathregular{s^{-1}}$]")
-        ax[1, 1].set_xlabel(t_label)
-        
-        ax[2, 0].set_ylabel("displacement, $x_{e}$ [m]")
-        ax[2, 0].set_xlabel(t_label)
-        
-        ax[2, 1].set_ylabel("Altitude, h [m]")
-        ax[2, 1].set_xlabel(t_label)
-        
-        # Plotting with black lines and gridlines
-        ax[0, 0].plot(self.t, self.u_b, color='black')
-        ax[0, 1].plot(self.t, self.w_b, color='black')
-        ax[1, 0].plot(self.t, self.theta, color='black')
-        ax[1, 1].plot(self.t, self.q, color='black')
-        ax[2, 0].plot(self.t, self.x_e, color='black')
-        ax[2, 1].plot(self.t, self.altitude, color='black')
-        
-        # Adding gridlines
-        for i in range(3):
-            for j in range(2):
-                ax[i, j].grid(linestyle='-', color = 'black')
-                
         fig.suptitle("Longitudinal Flight Dynamics", fontsize=36)
         
+        t_label = 'time, t [s]'
+        
+        y_labels = ["velocity, $u_{B}$ [m$\mathregular{s^{-1}}$]",
+                    "velocity, $w_{B}$ [m$\mathregular{s^{-1}}$]",
+                    "pitch angle, ${\Theta}$ [°]",
+                    "angular velocity, q [rad$\mathregular{s^{-1}}$]",
+                    "displacement, $x_{e}$ [m]",
+                    "Altitude, h [m]"]
+        
+        y_axis = [self.u_b, self.w_b, self.theta, self.q, self.x_e, self.altitude]
+        
+        for i in range(3):
+            for j in range(2):
+                ax[i, j].set_ylabel(y_labels[i * 2 + j],)
+                ax[i, j].set_xlabel(t_label)
+                ax[i, j].plot(self.t, y_axis[i * 2 + j], color='black')
+                ax[i, j].grid(linestyle='-', color='black')
+        
         plt.show()
+
 
     def Calculations(self,t,y,delta,T):
 
@@ -268,8 +268,8 @@ class InclineSimulation (Simulation):
             y = integrate.solve_ivp(self.Model,[0,TotalSimulationTime],[Trim.u_b,Trim.w_b,Trim.theta,0,x_e0,z_e0],t_eval=np.linspace(0,TotalSimulationTime,TotalSimulationTime*10))
             final_h = y.y[5][len(y.y[5]) - 1] * -1 +1000
         
-        print(f"Optimimum T_Climb: {self.T_climb}")
-        print(f"Final Height: {final_h}")
+        print(f"Optimimum T_Climb = {self.T_climb}")
+        print(f"Final Height = {final_h}")
         self.HandleSimulationData(y,1000)
     
 
@@ -320,7 +320,8 @@ class CustomSimulation (Simulation):
 #--------------------------------------
 # B1
 
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 16))
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(30,20))
+fig.suptitle("B1: Engineering Design Simulations", fontsize=36)
 
 ax1.set_ylabel("thrust, T [N]")
 ax1.set_xlabel("velocity, v [m$\mathregular{s^{-1}}$]")
@@ -355,6 +356,5 @@ for j in np.linspace(0,1000):
 
 CustomSimulation(100,0,300,10,100)
 
-# plt.show()
 
 #--------------------------------------
