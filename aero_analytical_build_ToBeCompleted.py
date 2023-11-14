@@ -330,7 +330,7 @@ class CustomSimulation (Simulation):
 
         y = integrate.solve_ivp(self.Model,[0,TotalSimulationTime],[Trim.u_b,Trim.w_b,Trim.theta,0,0,0],t_eval=np.linspace(0,TotalSimulationTime,TotalSimulationTime*100))
         self.HandleSimulationData(y)
-       
+        self.PlotData()
     
 
     def Model(self,t,y):
