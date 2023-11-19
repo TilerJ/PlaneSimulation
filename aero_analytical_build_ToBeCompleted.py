@@ -279,10 +279,13 @@ class CustomSimulation (Simulation):
         return self.Calculations(t,y,delta,Thrust)
 
     def SetTitles(self, fig):
-        plt.subplots_adjust(top=0.81,bottom=0.075)
+        plt.subplots_adjust(top=0.8,bottom=0.075)
         fig.text(s="A3: Trim Conditions", x=0.5, y=0.9, fontsize=20, ha='center', va='center')
-        fig.text(s='V = 100 ms-1, γ=0.0°', x=0.5, y=0.87, fontsize=12, ha='center', va='center')
-        fig.text(s="At t = 100 s , $δ_{E}$ is increased by 10% from -0.0520° to -0.0572°", x=0.5, y=0.84, fontsize=12, ha='center', va='center')
+        fig.text(s=f'V = {self.Trim.Velocity} ms-1, γ={self.Trim.flight_path_angle}°', x=0.5, y=0.87, fontsize=12, ha='center', va='center')
+        if self.PercentageChangeElevator != 0:
+            fig.text(s=f"At t = {self.TimeChangeElevator} s ,"+ "$δ_{E}$" + f" is increased by {self.PercentageChangeElevator:.2f}% from {self.Trim.delta:.2f}° to {self.Trim.delta * (100+ self.PercentageChangeElevator)/100:.2f}°", x=0.5, y=0.84, fontsize=12, ha='center', va='center')
+        if self.PercentageChangeThrust != 0:
+            fig.text(s=f"At t = {self.TimeChangeThrust} s ,T is increased by {self.PercentageChangeThrust:.2f}% from {self.Trim.T:.2f}° to {self.Trim.T * (100+ self.PercentageChangeThrust)/100:.2f}°", x=0.5, y=0.81, fontsize=12, ha='center', va='center')
         return fig
 
 #-----------------------------------------------    B1    ----------------------------------------------------------------------------
@@ -376,7 +379,6 @@ class InclineSimulation (Simulation):
         print(f"Final Height: {current_h}")
         self.HandleSimulationData(y,1000)
         self.PlotData()
-    
 
     def Model(self,t,y):
         # Only changes to trim 2 commands while in t_climb
@@ -433,7 +435,8 @@ def Test_Trim(v,gamma):
 CustomSimulation(100,0,300,10,100)
 
 # B1
-B1()
+# B1()
 
 # B2
-InclineSimulation(119,0,600)
+# InclineSimulation(119,0,600)
+
