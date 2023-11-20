@@ -35,7 +35,7 @@ while True:
         TrimVelocity = float(values["velocity"])
         TrimGamma = float(values["flight_angle"])
         
-        if TrimVelocity != None and TrimGamma != None:
+        if TrimVelocity != None and TrimGamma != None: #Basic check to prevent errors
             trimconditions = Trim_Simulation(TrimVelocity, TrimGamma)
     
             angle_of_attack = trimconditions.alpha
@@ -47,16 +47,19 @@ while True:
             window["elevator_angle"].update(f"{elevator_angle:.4f} ")
         
     if event == "Show Graphs":
-            
+
+        TrimVelocity = float(values["velocity"])
+        TrimGamma = float(values["flight_angle"])
         TotalSimulationTime = int(values["total_simulation_time"])
         PercentageChangeElevator = float(values["change_in_elevator_angle"])
         TimeChangeElevator = float(values["elevator_angle_change_time"])
         PercentageChangeThrust = float(values["change_in_Thrust"])
         TimeChangeThrust = float(values["Thrust_change_time"])
         
-        CustomSimulation(TrimVelocity, TrimGamma, TotalSimulationTime,
-                         PercentageChangeElevator, TimeChangeElevator,
-                         PercentageChangeThrust, TimeChangeThrust, )
+        if TrimVelocity != None and TrimGamma != None:#Basic check to prevent errors
+            CustomSimulation(TrimVelocity, TrimGamma, TotalSimulationTime,
+                             PercentageChangeElevator, TimeChangeElevator,
+                             PercentageChangeThrust, TimeChangeThrust, )
 
             
 window.close()
