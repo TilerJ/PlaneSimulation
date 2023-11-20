@@ -1,10 +1,9 @@
-# importing modules
+#--------------------------------------  Importing Modules  ---------------------------------------------------------------------------
 import numpy as np
 import math
 from scipy import optimize,integrate
 import pandas as pd 
-import matplotlib.pyplot as plt
-import matplotlib.cm as cm
+import matplotlib.pyplot as plt 
 
 #--------------------------------------
 # importing module with aerodynamics model 
@@ -12,10 +11,11 @@ import matplotlib.cm as cm
 #    tables of CD vs CL
 # and tables of CL_el and CM_el vs delta_el 
 import aero_table
-#--------------------------------------
 
-#--------------------------------------
-# Lift vs alpha
+#Imports necessary variables related to the vehicle and environment
+import env 
+import vehicle 
+#--------------------------------------  Lift vs alpha  -------------------------------------------------------------------------------
 
 # Initial guesses for the fitting
 # i.e., initial values of a and b
@@ -35,10 +35,9 @@ params, params_covariance = optimize.curve_fit(CL_a_func, aero_table.alpha, aero
 
 CL_0 = params[0]
 CL_alpha = params[1]
-#--------------------------------------
 
-#--------------------------------------
-#Lift vs delta_elevator
+#--------------------------------------  Lift vs delta_elevator  ----------------------------------------------------------------------
+
 CL_delta = 0.003
 
 def CL_d_func(x, a):
@@ -47,10 +46,9 @@ def CL_d_func(x, a):
 params, params_covariance = optimize.curve_fit(CL_d_func, aero_table.delta_el, aero_table.CL_el, p0=[CL_delta])
 
 CL_delta = params[0]
-#--------------------------------------
 
-#--------------------------------------
-# CD vs CL
+#--------------------------------------  CD vs CL  ------------------------------------------------------------------------------------
+
 CD_0 = 0.026
 CD_k = 0.045
 
@@ -61,10 +59,9 @@ params, params_covariance = optimize.curve_fit(CD_CL_func, aero_table.CL, aero_t
 
 CD_0 = params[0]
 CD_k = params[1]
-#--------------------------------------
 
-#--------------------------------------
-# Moment vs alpha
+#--------------------------------------  Moment vs alpha  -----------------------------------------------------------------------------
+
 CM_0 = 0.
 CM_alpha = -0.01
 
@@ -75,10 +72,9 @@ params, params_covariance = optimize.curve_fit(CM_a_func, aero_table.alpha, aero
 
 CM_0 = params[0]
 CM_alpha = params[1]
-#--------------------------------------
 
-#--------------------------------------
-#Moment vs delta_elevator
+#--------------------------------------  Moment vs delta_elevator  --------------------------------------------------------------------
+
 CM_delta = -0.004
 
 def CM_d_func(x, a):
@@ -87,36 +83,13 @@ def CM_d_func(x, a):
 params, params_covariance = optimize.curve_fit(CM_d_func, aero_table.delta_el, aero_table.CM_el, p0=[CM_delta])
 
 CM_delta = params[0]
-#--------------------------------------
 
-#--------------------------------------
-# print coefficients into a pandas dataframe
-data = {
-    'Coefficient': ['CL_0', 'C_L_alpha', 'C_L_Delta', 'C_D_0', 'C_D_k', 'C_M_0', 'C_M_alpha', 'C_M_Delta'],
-    'Value': [CL_0, CL_alpha, CL_delta, CD_0, CD_k, CM_0, CM_alpha, CM_delta]
-}
-
-df = pd.DataFrame(data)
-df_title = pd.DataFrame({'Coefficient': [''], 'Value': ['']})
-df = pd.concat([df_title, df], ignore_index=True)
-
-print(df.to_markdown(index=False, tablefmt='grid'))
-
-fig, ax = plt.subplots()
-ax.text(0.5, 0.5, df.to_string(index=False),
-        ha='center', va='center', fontsize=14, transform=ax.transAxes)
-ax.axis('off')
-plt.show()
-#--------------------------------------
-
-
-import env 
-import vehicle 
+#-----------------------------------------------    A2    ----------------------------------------------------------------------------
 
 class Trim_Simulation:
     def __init__(self,velocity:float,flight_path_angle:float):
         """
-        Calculates all Trim Conditions
+        Calculates all Trim Conditions and stored them
         
         self.alpha      (Radians)
         self.delta      (Radians)
@@ -162,42 +135,45 @@ class Trim_Simulation:
 
         return (-self.L * math.cos(alpha) - self.D * math.sin(alpha) + self.W * math.cos(alpha + self.flight_path_angle))
 
-sim = Trim_Simulation(100,0)
-print(f"Alpha: {sim.alpha}")
-print(f"Delta: {sim.delta}")
-print(f"Thrust: {sim.T}")
-print(f"Theta: {sim.theta}")
-print(f"u_b: {sim.u_b}")
-print(f"w_b: {sim.w_b}")
+#-----------------------------------------------    A3    ----------------------------------------------------------------------------
 
-
+# General Class inherited by anything using the simulation
 class Simulation():
-
+    
     def PlotData(self):
-        fig, ax = plt.subplots(3, 2, figsize=(16, 16))
-        fig.suptitle("Longitudinal Flight Dynamics", fontsize=36)
-        
+        fig, ax = plt.subplots(4, 2, figsize=(16, 16))
+
+        fig.suptitle("Longitudinal Flight Dynamics", fontsize=50)
+
+        fig = self.SetTitles(fig)
+
         t_label = 'time, t [s]'
         
         y_labels = ["velocity, $u_{B}$ [m$\mathregular{s^{-1}}$]",
                     "velocity, $w_{B}$ [m$\mathregular{s^{-1}}$]",
-                    "pitch angle, ${\Theta}$ [°]",
                     "angular velocity, q [rad$\mathregular{s^{-1}}$]",
-                    "displacement, $x_{e}$ [m]",
+                    "pitch angle, ${\Theta}$ [°]",
+                    "flight path angle, ${\u03B3}$ [°]",
+                    "displacement, $z_{e}$ [m]",
+                    "alpha, ${\u03B1}$ [°]",
                     "Altitude, h [m]"]
         
-        y_axis = [self.u_b, self.w_b, self.theta_deg, self.q, self.x_e, self.altitude]
+        y_axis = [self.u_b, self.w_b, self.q, self.theta_deg, self.gamma_deg, self.z_e,self.alpha_deg,self.altitude]
         
-        for i in range(3):
+        for i in range(4):
             for j in range(2):
                 ax[i, j].set_ylabel(y_labels[i * 2 + j],)
                 ax[i, j].set_xlabel(t_label)
                 ax[i, j].plot(self.t, y_axis[i * 2 + j], color='black')
                 ax[i, j].grid(linestyle='-', color='black')
-        
+    
         plt.show()
     
-    def HandleSimulationData(self,Data,initial_h = 0):
+    def SetTitles(self,fig): 
+        # A function to be overridden by inherrited class as each class handles the titles differently
+        pass
+
+    def HandleSimulationData(self,Data,initial_h = 2000):
         """
         Takes data from solve_ivp and puts then into variables for plotting or GUI
         """
@@ -209,10 +185,14 @@ class Simulation():
         self.theta_deg = self.theta * 180/math.pi
         self.q = Data.y[3]
         self.x_e = Data.y[4]
-        self.z_e = Data.y[5]
+        self.z_e = Data.y[5] - initial_h
+
+        self.alpha = np.arctan(self.w_b/self.u_b) #Numpy.arctan is needed for nparrays
+        self.alpha_deg = self.alpha * 180/math.pi
+        self.gamma = self.theta - self.alpha
+        self.gamma_deg = self.gamma * 180/math.pi
 
         self.altitude = self.z_e * -1
-        self.altitude += initial_h
 
     def Calculations(self,t,y,delta,T):
         """
@@ -265,9 +245,111 @@ class Simulation():
 
         return du_dt,dw_dt,dtheta_dt,dq_dt,dx_dt,dz_dt
 
+## For user Interface 
+class CustomSimulation (Simulation):
+    def __init__(self,TrimV,TrimGamma,TotalSimulationTime,PercentageChangeElevator = 0,TimeChangeElevator = 0,PercentageChangeThrust = 0,TimeChangeThrust=0):
+        """
+        Finds the response of the simulation to a change in thrust and elevator angle after a set amount of time
+        """
+        Trim = Trim_Simulation(TrimV,TrimGamma)
+        self.Trim = Trim
+        self.PercentageChangeElevator = PercentageChangeElevator # The amount Elevator Angle changes by
+        self.TimeChangeElevator = TimeChangeElevator # The time at which Elevator Angle changes
+        self.PercentageChangeThrust = PercentageChangeThrust # The amount Thrust changes by
+        self.TimeChangeThrust = TimeChangeThrust # The time at which Thrust changes
 
+        y = integrate.solve_ivp(self.Model,[0,TotalSimulationTime],[Trim.u_b,Trim.w_b,Trim.theta,0,0,0],t_eval=np.linspace(0,TotalSimulationTime,TotalSimulationTime*100))
+        self.HandleSimulationData(y)
+        self.PlotData()
+       
+    def Model(self,t,y):
+        # waits until the designated time change and applies the percentage change for either thrust or Elevator angle or both
+        if t > self.TimeChangeElevator:
+            delta = self.Trim.delta * (100+ self.PercentageChangeElevator)/100
+        else:
+            delta = self.Trim.delta
+        
+        if t > self.TimeChangeThrust:
+            Thrust = self.Trim.T * (100 + self.PercentageChangeThrust)/100
+        else:
+            Thrust = self.Trim.T
 
-## For B2
+        return self.Calculations(t,y,delta,Thrust)
+
+    def SetTitles(self, fig):
+        offset = 0
+        fig.text(s="A3: Trim Conditions", x=0.5, y=0.92, fontsize=35, ha='center', va='center')
+        fig.text(s=f"V = {self.Trim.Velocity} "+"m$\mathregular{s^{-1}}$"+f", γ={self.Trim.flight_path_angle}°", x=0.5, y=0.89, fontsize=24, ha='center', va='center')
+        if self.PercentageChangeElevator != 0:
+            fig.text(s=f"At t = {self.TimeChangeElevator} s, "+ "$δ_{E}$" + f" is increased by {self.PercentageChangeElevator:.2f}% from {self.Trim.delta:.2f}° to {self.Trim.delta * (100+ self.PercentageChangeElevator)/100:.2f}°", x=0.5, y=0.86, fontsize=24, ha='center', va='center')
+            offset +=0.03
+            
+        if self.PercentageChangeThrust != 0:
+            fig.text(s=f"At t = {self.TimeChangeThrust} s, T is increased by {self.PercentageChangeThrust:.2f}% from {self.Trim.T:.2f} N to {self.Trim.T * (100+ self.PercentageChangeThrust)/100:.2f} N", x=0.5, y=0.86 - offset, fontsize=24, ha='center', va='center')
+            offset +=0.03
+            
+        plt.subplots_adjust(top=0.87 - offset,bottom=0.075)
+        return fig
+
+#-----------------------------------------------    B1    ----------------------------------------------------------------------------
+
+def B1():
+    fig, ax = plt.subplots(2, 2, figsize=(15,10))
+    plt.subplots_adjust(top=0.8,bottom=0.075)
+    
+    # Getting Data
+    for j in range(-2,3):
+        Thrust = []
+        Delta = []
+        Velocity = []
+        for i in np.linspace(0,120,5000):
+            sim = Trim_Simulation(i,j*math.pi/180)
+            if sim.T>0 and (sim.delta_deg>=-20 and sim.delta_deg<=20) and (sim.alpha_deg>=-16 and sim.alpha_deg<=12):
+                
+                Thrust.append(sim.T)
+                Delta.append(sim.delta_deg)
+                Velocity.append(i)
+
+        ax[0,0].plot(Velocity,Thrust,label=f"γ = {j}°")
+        ax[1,0].plot(Velocity,Delta,label=f"γ = {j}°")
+        
+    for j in range(-2,3):
+        Delta = []
+        Thrust = []
+        Flight_Path_Angle = []
+        for i in np.linspace(-90,10,5000):
+            sim = Trim_Simulation(90 + j*10,i*math.pi/180)
+            if sim.T>0 and (sim.delta_deg>=-20 and sim.delta_deg<=20) and (sim.alpha_deg>=-16 and sim.alpha_deg<=12):
+                Delta.append(sim.delta_deg)
+                Thrust.append(sim.T)
+                Flight_Path_Angle.append(i)
+                
+        ax[0,1].plot(Flight_Path_Angle,Thrust,label = f"v = {90 + j*10} m/s")
+        ax[1,1].plot(Flight_Path_Angle,Delta,label = f"v = {90 + j*10} m/s")
+
+    ###Setting up graphs
+    fig.suptitle("Longitudinal Flight Dynamics", fontsize=36)
+    fig.text(s="B1: Engineering Design Simulations", x=0.5, y=0.9, fontsize=24, ha='center', va='center')
+    fig.text(s='A trim of the airplane for several combinations of V and γ where in the range where:', x=0.5, y=0.86, fontsize=18, ha='center', va='center')
+    fig.text(s='16° ≤ α ≤ 12°      T ≥ 0 N      -20°≤ $δ_{E}$ ≤20°', x=0.5, y=0.83, fontsize=18, ha='center', va='center')
+
+    x_labels = ["velocity, v [m$\mathregular{s^{-1}}$]",
+               "flight Path Angle, γ [°]"]
+        
+    y_labels = ["thrust, T [N]",
+                "elevator Angle, δE [°]"]
+
+    for i in range(2):
+            for j in range(2):
+                ax[i, j].set_ylabel(y_labels[i],)
+                ax[i, j].set_xlabel(x_labels[j])
+                ax[i, j].grid(linestyle='-', color='black')
+                ax[i,j].legend() # Must be called afer data is ploted otherwise legend isnt updated
+    
+    plt.show()
+
+#-----------------------------------------------    B2    ----------------------------------------------------------------------------
+
 class InclineSimulation (Simulation):
     def __init__(self,TrimV,TrimGamma,TotalSimulationTime,initial_h = 1000,final_h = 2000):
         """
@@ -294,13 +376,13 @@ class InclineSimulation (Simulation):
                 self.T_climb += Precision
                 y = integrate.solve_ivp(self.Model,[0,TotalSimulationTime],[Trim.u_b,Trim.w_b,Trim.theta,0,0,0],t_eval=np.linspace(0,TotalSimulationTime,TotalSimulationTime*10))
                 current_h = y.y[5][len(y.y[5]) - 1] * -1 + initial_h
-                print(current_h,self.T_climb)
         
-        print(f"Optimimum T_Climb: {self.T_climb}")
-        print(f"Final Height: {current_h}")
+        print("B2:")
+        print(f"For V = {TrimV} "+"ms\u207B"+"¹"  + f", γ = {TrimGamma}°")
+        print(f"Optimimum T_Climb: {self.T_climb:4f} m ")
+        print(f"Final Height: {current_h:4f} m ")
         self.HandleSimulationData(y,1000)
         self.PlotData()
-    
 
     def Model(self,t,y):
         # Only changes to trim 2 commands while in t_climb
@@ -313,82 +395,58 @@ class InclineSimulation (Simulation):
             
         return self.Calculations(t,y,delta,Thrust)
 
+    def SetTitles(self, fig):
+        plt.subplots_adjust(top=0.78,bottom=0.075)
+        fig.text(s="B2: Climb Analysis", x=0.5, y=0.92, fontsize=35, ha='center', va='center')
+        fig.text(s='Analysis of flight altitude from h1 = 1000 m to h2 = 2000m by 3 trim conditions', x=0.5, y=0.89, fontsize=20, ha='center', va='center')
+        fig.text(s="Trim condition 1: h1 = 1000 m (constant), V = 100 + 19 m$\mathregular{s^{-1}}$, γ=0°", x=0.5, y=0.86, fontsize=20, ha='center', va='center')
+        fig.text(s="Trim condition 2: 0m 1000 ≤ h2 ≤ 2000 m (increasing), V = 100 + 19 m$\mathregular{s^{-1}}$, γ=2°", x=0.5, y=0.83, fontsize=20, ha='center', va='center')
+        fig.text(s="Trim condition 3: h2 = 2000 m, V = 100 + 19 m$\mathregular{s^{-1}}$, γ=0°", x=0.5, y=0.8, fontsize=20, ha='center', va='center')
+        return fig
+#-----------------------------------------------    Testing    ----------------------------------------------------------------------- 
 
+# A1
+def PrintCoefficients():
+    # print coefficients into a pandas dataframe
+    data = {
+        'Coefficient': ['CL_0', 'C_L_alpha', 'C_L_Delta', 'C_D_0', 'C_D_k', 'C_M_0', 'C_M_alpha', 'C_M_Delta'],
+        'Value': [CL_0, CL_alpha, CL_delta, CD_0, CD_k, CM_0, CM_alpha, CM_delta]
+    }
 
-## For user Interface 
-class CustomSimulation (Simulation):
-    def __init__(self,TrimV,TrimGamma,TotalSimulationTime,PercentageChangeElevator = 0,TimeChangeElevator = 0,PercentageChangeThrust = 0,TimeChangeThrust=0):
-        """
-        Finds the response of the simulation to a change in thrust and elevator angle after a set amount of time
-        """
-        Trim = Trim_Simulation(TrimV,TrimGamma)
-        self.Trim = Trim
-        self.PercentageChangeElevator = PercentageChangeElevator # The amount Elevator Angle changes by
-        self.TimeChangeElevator = TimeChangeElevator # The time at which Elevator Angle changes
-        self.PercentageChangeThrust = PercentageChangeThrust # The amount Thrust changes by
-        self.TimeChangeThrust = TimeChangeThrust # The time at which Thrust changes
+    df = pd.DataFrame(data)
+    df_title = pd.DataFrame({'Coefficient': [''], 'Value': ['']})
+    df = pd.concat([df_title, df], ignore_index=True)
 
-        y = integrate.solve_ivp(self.Model,[0,TotalSimulationTime],[Trim.u_b,Trim.w_b,Trim.theta,0,0,0],t_eval=np.linspace(0,TotalSimulationTime,TotalSimulationTime*100))
-        self.HandleSimulationData(y)
-        self.PlotData()
-    
+    print(df.to_markdown(index=False, tablefmt='grid'))
 
-    def Model(self,t,y):
-        # waits until the designated time change and applies the percentage change for either thrust or Elevator angle or both
-        if t > self.TimeChangeElevator:
-            delta = self.Trim.delta * (100+ self.PercentageChangeElevator)/100
-        else:
-            delta = self.Trim.delta
-        
-        if t > self.TimeChangeThrust:
-            Thrust = self.Trim.T * (100 + self.PercentageChangeThrust)/100
-        else:
-            Thrust = self.Trim.T
+    fig, ax = plt.subplots()
+    ax.text(0.5, 0.5, df.to_string(index=False),
+            ha='center', va='center', fontsize=14, transform=ax.transAxes)
+    ax.axis('off')
+    plt.show()
 
-        return self.Calculations(t,y,delta,Thrust)
+PrintCoefficients()
 
+# A2
+def Test_Trim(v,gamma):
+    sim = Trim_Simulation(v,gamma)
+    print("Trim Conditions:")
+    print(f"For V = {v} "+"ms\u207B"+"¹"  + f", γ = {gamma}°")
+    print(f"Alpha: {sim.alpha} Rad")
+    print(f"Delta: {sim.delta} Rad")
+    print(f"Thrust: {sim.T} N")
+    print(f"Theta: {sim.theta} Rad")
+    print(f"u_b: {sim.u_b} ms\u207B"+"¹")
+    print(f"w_b: {sim.w_b} ms\u207B"+"¹")
+    print()
+
+Test_Trim(100, 0.05)
+
+# A3
+CustomSimulation(100,0,300,10,100)
 
 # B1
+B1()
 
-def B1():
-    fig, (ax1, ax2) = plt.subplots(1, 2)
-
-    ax1.set_ylabel("Trust(T)")
-    ax1.set_xlabel("Velocity(v)")
-    ax2.set_ylabel("Elevator Angle(δE)")
-    ax2.set_xlabel("Flight Path Angle(γ)")
-
-    for j in np.linspace(-45,45):
-        y = []
-        x = []
-        for i in np.linspace(0,100):
-            sim = Trim_Simulation(i,j/100)
-            if sim.T>0 and (sim.delta_deg>-20 and sim.delta_deg<20) and (sim.alpha_deg>-16 and sim.alpha_deg<12):
-                y.append(sim.T)
-                x.append(i)
-            
-
-        ax1.plot(x,y,label = f"Gamma: {j}",c=cm.hot(j/50))
-
-    for j in np.linspace(0,1000):
-        
-        y = []
-        x = []
-        for i in np.linspace(-45,45):
-            sim = Trim_Simulation(j,i/100)
-            if sim.T>0 and (sim.delta_deg>=-20 and sim.delta_deg<=20) and (sim.alpha_deg>=-16 and sim.alpha_deg<=12):
-                x.append(i/100)
-                y.append(sim.delta*180/math.pi)
-
-        ax2.plot(x,y,label = f"Velcities: {j}")
-
-
-
-
-
-#--------------------------------------
-
-#A
-#CustomSimulation(100,0,300,10,100)
-##B2
-#InclineSimulation(119,0,600)
+# B2
+InclineSimulation(119,0,600)
